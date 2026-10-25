@@ -46,3 +46,31 @@ def evaluate_hydraulics(rpm, valve):
         "predicted_peak_bar": p_steady,
         "predicted_final_bar": p_steady
     }
+def start_server():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind((HOST, PORT))
+    server.listen(10)
+    print(f"[+] Simulation API listening on {HOST}:{PORT}", flush=True)
+
+    while True:
+        try:
+            client, addr = server.accept()
+            raw_data = client.recv(4096).decode('utf-8').strip()
+            if not raw_data:
+                client.close()
+                continue
+            
+            payload = json.loads(raw_data)
+            # Support both naming conventions
+            rpm = float(payload.get("pump_rpm", payload.get("rpm", 1500)))
+            valve = float(payload.get("valve_opening", payload.get("valve", 40)))
+
+            result = evaluate_hydraulics(rpm, valve)
+            client.sendall(json.dumps(result).encode('utf-8'))
+            client.close()
+        except Exception as e:
+            pass
+
+if __name__ == '__main__':
+    start_server()
