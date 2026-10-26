@@ -14,9 +14,12 @@ c1 = 0.02             # Pump pressure head coefficient
 c2 = 5e6              # Hydraulic friction coefficient
 Cv_max = 2e-4         # Maximum valve flow coefficient (m^2)
 
+
 # RPM to rad/s
 def rpm_to_rads(rpm: float) -> float:
     return float(rpm) * 2.0 * np.pi / 60.0
+
+
 
 # Flows Calculation
 def pump_flow(P: float , omega :float) -> float:
@@ -27,6 +30,8 @@ def valve_flow(P: float, theta: float) -> float:
     delta_p = max(0.0, P - P_out)
     Cv = Cv_max * np.clip(theta, 0.0, 1.0)
     return Cv * np.sqrt(2.0 * delta_p / rho)
+
+
 
 # Differential Equation (dP/dt)
 def ode_system(t, state, target_rpm: float, valve_pct: float):
@@ -39,8 +44,8 @@ def ode_system(t, state, target_rpm: float, valve_pct: float):
 
     dP_dt = (beta / V) * (Q_in - Q_out)
     return [dP_dt]
-"""
 
+    
 # Prediction API
     def simulate_transient(current_p_pa: float, target_rpm: float, valve_pct: float, horizon_sec: float = 3.0) -> dict:
         if target_rpm < 0.0 :
@@ -53,9 +58,7 @@ def ode_system(t, state, target_rpm: float, valve_pct: float):
         t_span = (0.0 , horizon_sec)
         initial_state = [current_p_pa]
         
-"""
 
-    
     # Radau solver -> to calculate complex beta/V ratio 
     sol = solve_ivp(
         ode_system,
