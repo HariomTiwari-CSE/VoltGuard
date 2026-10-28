@@ -51,6 +51,24 @@ struct ModbusFrame {
 
 class ModbusParser {
 public:
+    static bool readUint16Be(const std::vector<std::uint8_t>& data,
+                             std::size_t offset,
+                             std::uint16_t& value) {
+        if (offset >= data.size() || data.size() - offset < 2) {
+            return false;
+        }
+
+        value = static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(data[offset]) << 8) |
+            static_cast<std::uint16_t>(data[offset + 1]));
+        return true;
+    }
+
+    static void appendUint16Be(std::vector<std::uint8_t>& data, std::uint16_t value) {
+        data.push_back(static_cast<std::uint8_t>((value >> 8) & 0xFFu));
+        data.push_back(static_cast<std::uint8_t>(value & 0xFFu));
+    }
+
     static bool isSupportedFunction(std::uint8_t functionCode) {
         switch (functionCode) {
             case static_cast<std::uint8_t>(FunctionCode::ReadCoils):
