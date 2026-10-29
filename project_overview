@@ -1,0 +1,19 @@
+VoltGuard/
+├── CMakeLists.txt                 # C++ build system (Qt app, Parser, Bridge)
+│
+├── parser_ips/                    # Module 1: Packet Interceptor & Inline IPS
+│   ├── modbus_parser.hpp          # Modbus TCP hex frame parser
+│   ├── modbus_parser.cpp          # Function Code 0x06 / 0x10 register extractor
+│   ├── ips_engine.cpp             # NFQueue / Raw socket inline packet dropping
+│   └── test_traffic_generator.py  # Script generating normal vs malicious Modbus payloads
+│
+├── physics_core/                  # Module 2: Physics Engine (Digital Twin)
+│   ├── physics_engine.py          # Hamara verified SciPy/Radau fluid dynamic model
+│   ├── simulation_api.py          # Lightweight bridge/socket server for incoming commands
+│   └── validation_tests.py        # Tests catching impossible physics (e.g. negative values)
+│
+└── dashboard_ui/                  # Module 4: Native OT Desktop Dashboard (C++ / Qt)
+    ├── main.cpp                   # Qt desktop entry point
+    ├── mainwindow.h / .cpp        # Dark-mode industrial shell for factory operators
+    ├── physics_plot_widget.cpp    # Real-time QCustomPlot (Predicted vs Actual State)
+    └── traffic_log_model.cpp      # Modbus payload and dropped alarm table
