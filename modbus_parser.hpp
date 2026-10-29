@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -67,6 +68,34 @@ public:
     static void appendUint16Be(std::vector<std::uint8_t>& data, std::uint16_t value) {
         data.push_back(static_cast<std::uint8_t>((value >> 8) & 0xFFu));
         data.push_back(static_cast<std::uint8_t>(value & 0xFFu));
+    }
+
+    static std::uint16_t crc16Modbus(const std::vector<std::uint8_t>& data) {
+        std::uint16_t crc = 0xFFFFu;
+        for (const std::uint8_t byte : data) {
+            crc ^= byte;
+            for (int bit = 0; bit < 8; ++bit) {
+                if ((crc & 0x0001u) != 0u) {
+                    crc = static_cast<std::uint16_t>((crc >> 1) ^ 0xA001u);
+                } else {
+                    crc = static_cast<std::uint16_t>(crc >> 1);
+                }
+            }
+        }
+        return crc;
+    }
+
+    static bool isValidRtuFrame(const std::vector<std::uint8_t>& frame) {
+        if (frame.size() < 4) {
+            return false;
+        }
+
+        const std::size_t crcOffset = frame.size() - 2;
+        const std::uint16_t expectedCrc = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(frame[crcOffset]) |
+            (static_cast<std::uint16_t>(frame[crcOffset + 1]) << 8));
+        const std::vector<std::uint8_t> data(frame.begin(), frame.begin() + crcOffset);
+        return crc16Modbus(data) == expectedCrc;
     }
 
     static bool isSupportedFunction(std::uint8_t functionCode) {
