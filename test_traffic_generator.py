@@ -1,6 +1,11 @@
 """Helpers for building offline Modbus RTU test frames."""
 
+import argparse
+import json
 import random
+
+
+MAX_VALID_FRAMES = 100
 
 
 def crc16_modbus(data):
@@ -73,3 +78,29 @@ def generate_records(count, seed):
         )
     )
     return records
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Print offline Modbus RTU test frames as JSON Lines."
+    )
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=10,
+        help=f"number of valid read frames (0-{MAX_VALID_FRAMES}, default: 10)",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=7, help="random seed for repeatable output"
+    )
+    args = parser.parse_args()
+
+    if not 0 <= args.count <= MAX_VALID_FRAMES:
+        parser.error(f"--count must be between 0 and {MAX_VALID_FRAMES}")
+
+    for record in generate_records(args.count, args.seed):
+        print(json.dumps(record))
+
+
+if __name__ == "__main__":
+    main()
