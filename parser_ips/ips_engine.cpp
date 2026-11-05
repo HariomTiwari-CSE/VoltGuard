@@ -97,9 +97,72 @@ private:
         }
     }
 
-    static bool hasAddressRange(std::uint8_t functionCode) {
+    static bool hasQuantity(std::uint8_t functionCode) {
         return functionCode == 0x01u || functionCode == 0x02u ||
                functionCode == 0x03u || functionCode == 0x04u ||
-               functionCode == 0x05u || functionCode == 0x06u ||
                functionCode == 0x0Fu || functionCode == 0x10u;
     }
+
+    void validateParsedFrame(InspectionResult& result) const {
+        result.parsed = true;
+        result.allowed = true;
+
+        if (!result.frame.error.empty()) {
+            addViolation(result, "Invalid Modbus frame: " + result.frame.error);
+            return;
+        }
+
+        if (result.frame.exception) {
+            addViolation(result,
+                         "Modbus exception response (code " +
+                             std::to_string(result.frame.exceptionCode) + ")");
+            return;
+        }
+
+        if (result.frame.functionCode == 0u) {
+            addViolation(result, "Missing Modbus function code");
+            return;
+        }
+
+        if (!modbus::ModbusParser::isSupportedFunction(result.frame.functionCode)) {
+            addViolation(result, "Unsupported Modbus function code");
+            return;
+        }
+
+        if (result.frame.request && hasQuantity(result.frame.functionCode)) {
+            if (result.frame.quantity == 0u) {
+                addViolation(result, "Modbus request quantity must be non-zero");
+                return;
+            }
+
+            const std::uint16_t maxQuantityAllowed =
+                maximumQuantity(result.frame.functionCode);
+
+            if (maxQuantityAllowed != 0u &&
+                result.frame.quantity > maxQuantityAllowed) {
+                addViolation(result,
+                             "Modbus request quantity exceeds the allowed limit");
+                return;
+            }
+
+            if (static_cast<std::uint32_t>(result.frame.startAddress) +
+                    result.frame.quantity >
+                0x10000u) {
+                addViolation(result, "Modbus address range exceeds the valid range");
+                return;
+            }
+        }
+
+        if (result.frame.request && isWriteFunction(result.frame.functionCode)) {
+            if (result.frame.functionCode == 0x05u &&
+                result.frame.value != 0x0000u &&
+                result.frame.value != 0xFF00u) {
+                addViolation(result, "Illegal coil value in write request");
+                return;
+            }
+        }
+    }
+};
+
+}  // namespace ips
+}  // namespace voltguard
