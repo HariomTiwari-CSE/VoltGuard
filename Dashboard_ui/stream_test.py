@@ -49,3 +49,25 @@ for name, hex_str, rpm, valve in packets:
             curr_p = peak_p
 
     print(f"[*] {now_str} | {hex_str} | {verdict} | {reason}")
+ # 1. Send Row to UI Table
+    log_payload = {
+        "type": "packet_log",
+        "time": now_str,
+        "hex": hex_str,
+        "verdict": verdict,
+        "reason": reason
+    }
+    udp_sock.sendto(json.dumps(log_payload).encode(), ui_dest)
+
+    # 2. Send Points to UI Graph
+    telem_payload = {
+        "type": "telemetry",
+        "time": sim_time,
+        "p_actual": curr_p,
+        "p_predicted": peak_p
+    }
+    udp_sock.sendto(json.dumps(telem_payload).encode(), ui_dest)
+
+    time.sleep(1.5)
+
+print("[+] Stream completed.")
