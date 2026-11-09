@@ -43,3 +43,14 @@ QVariant TrafficLogModel::data(const QModelIndex &index, int role) const {
     }
     return QVariant();
 }
+QVariant TrafficLogModel::headerData(int section, Qt::Orientation orientation, int role) const {
+    if (role != Qt::DisplayRole || orientation != Qt::Horizontal) return QVariant();
+
+    switch (section) {
+        case 0: return "Timestamp";
+        case 1: return "Hex Payload";
+        case 2: return "Verdict";
+        case 3: return "Mitigation / Physics Reason";
+        default: return QVariant();
+    }
+}
