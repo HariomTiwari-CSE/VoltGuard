@@ -54,3 +54,8 @@ QVariant TrafficLogModel::headerData(int section, Qt::Orientation orientation, i
         default: return QVariant();
     }
 }
+void TrafficLogModel::appendLog(const QString &time, const QString &hex, const QString &verdict, const QString &reason) {
+    beginInsertRows(QModelIndex(), logs.size(), logs.size());
+    logs.append({time, hex, verdict, reason});
+    endInsertRows();
+}
