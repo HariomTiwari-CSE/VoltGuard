@@ -9,4 +9,19 @@ bool ModbusParser::parseFrame(
     const std::vector<uint8_t>& packet,
     ModbusFrame& frame)
 {
+        if (frame.function_code == 0x06)
+    {
+        if (packet.size() < 12)
+        {
+            return false;
+        }
+
+        frame.register_address =
+            bytesToUint16(packet[8], packet[9]);
+
+        frame.register_value =
+            bytesToUint16(packet[10], packet[11]);
+
+        return true;
+    }
 "
