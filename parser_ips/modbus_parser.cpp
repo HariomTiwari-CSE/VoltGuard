@@ -24,4 +24,18 @@ bool ModbusParser::parseFrame(
 
         return true;
     }
+        if (frame.function_code == 0x10)
+    {
+        if (packet.size() < 13)
+        {
+            return false;
+        }
+
+        frame.register_address =
+            bytesToUint16(packet[8], packet[9]);
+
+        frame.register_count =
+            bytesToUint16(packet[10], packet[11]);
+
+        uint8_t byte_count = packet[12];
 "
