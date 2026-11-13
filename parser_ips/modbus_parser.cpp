@@ -38,4 +38,33 @@ bool ModbusParser::parseFrame(
             bytesToUint16(packet[10], packet[11]);
 
         uint8_t byte_count = packet[12];
+                if (packet.size() < (13 + byte_count))
+        {
+            return false;
+        }
+
+        frame.values.clear();
+
+        for (size_t i = 13;
+             i < (13 + byte_count);
+             i += 2)
+        {
+            if (i + 1 >= packet.size())
+            {
+                break;
+            }
+
+            uint16_t value =
+                bytesToUint16(
+                    packet[i],
+                    packet[i + 1]);
+
+            frame.values.push_back(value);
+        }
+
+        return true;
+    }
+
+    return false;
+}
 "
