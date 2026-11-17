@@ -118,3 +118,95 @@ class Statistics:
             f"Blocked : {self.blocked_packets}"
         )
         print("----------------------------------")
+
+parser = ModbusParser()
+
+ips = IPSEngine()
+
+alerts = AlertManager()
+
+stats = Statistics()
+
+packet_queue = queue.Queue()
+
+
+def shutdown_handler(signum, frame):
+
+    global RUNNING
+
+    RUNNING = False
+
+    print()
+    print("[+] Stopping VoltGuard...")
+    stats.display()
+
+    sys.exit(0)
+
+
+signal.signal(
+    signal.SIGINT,
+    shutdown_handler
+)
+
+signal.signal(
+    signal.SIGTERM,
+    shutdown_handler
+)
+
+def analyze_packet(packet):
+
+    if not packet.haslayer(TCP):
+        return
+
+    tcp_layer = packet[TCP]
+
+    if (
+        tcp_layer.dport != MODBUS_PORT
+        and
+        tcp_layer.sport != MODBUS_PORT
+    ):
+        return
+
+    payload = bytes(tcp_layer.payload)
+
+    if len(payload) == 0:
+        return
+
+    stats.increment_total()
+
+    frame = parser.parse_frame(payload)
+
+    if frame is None:
+
+        print(
+            "[INVALID MODBUS FRAME]"
+        )
+
+        return
+
+    result = ips.inspect(frame)
+
+    source_ip = packet[IP].src
+    destination_ip = packet[IP].dst
+
+    if result["allowed"]:
+
+        stats.increment_allowed()
+
+        print(
+            f"[ALLOW] {source_ip}"
+        )
+
+    else:
+
+        stats.increment_blocked()
+
+        print(
+            f"[BLOCK] {source_ip}"
+        )
+
+        alerts.raise_alert(
+            source_ip,
+            destination_ip,
+            result["reason"]
+        )
