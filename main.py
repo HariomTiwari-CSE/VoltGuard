@@ -210,3 +210,39 @@ def analyze_packet(packet):
             destination_ip,
             result["reason"]
         )
+
+def packet_worker():
+
+    while RUNNING:
+
+        try:
+
+            packet = packet_queue.get(
+                timeout=1
+            )
+
+            analyze_packet(packet)
+
+        except queue.Empty:
+            continue
+
+        except Exception as error:
+
+            print(
+                "[WORKER ERROR]"
+            )
+
+            print(error)
+
+
+def enqueue_packet(packet):
+
+    packet_queue.put(packet)
+
+
+worker_thread = threading.Thread(
+    target=packet_worker,
+    daemon=True
+)
+
+worker_thread.start()
