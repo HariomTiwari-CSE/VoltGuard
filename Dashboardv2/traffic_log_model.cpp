@@ -16,7 +16,7 @@ int TrafficLogModel::rowCount(const QModelIndex &parent) const
 
 int TrafficLogModel::columnCount(const QModelIndex &parent) const
 {
-    return parent.isValid() ? 0 : 4;
+    return parent.isValid() ? 0 : 6;
 }
 
 QVariant TrafficLogModel::data(const QModelIndex &index, int role) const
@@ -25,7 +25,7 @@ QVariant TrafficLogModel::data(const QModelIndex &index, int role) const
         index.row() < 0 ||
         index.row() >= logs.size() ||
         index.column() < 0 ||
-        index.column() >= columnCount()) {
+        index.column() >= columnCount(index.parent())) {
         return {};
     }
 
@@ -34,30 +34,36 @@ QVariant TrafficLogModel::data(const QModelIndex &index, int role) const
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case 0: return entry.timestamp;
-        case 1: return entry.hexPayload;
-        case 2: return entry.verdict;
-        case 3: return entry.reason;
+        case 1: return entry.source;
+        case 2: return entry.function;
+        case 3: return entry.verdict;
+        case 4: return entry.hexPayload;
+        case 5: return entry.reason;
         default: return {};
         }
     }
 
     if (role == Qt::ForegroundRole) {
-        const bool blocked =
-            entry.verdict.contains("DROP", Qt::CaseInsensitive) ||
-            entry.verdict.contains("BLOCK", Qt::CaseInsensitive);
+        const QColor statusColor =
+            entry.verdict == "COMPLETE"
+                ? QColor("#C9F27A")
+                : entry.verdict == "PARTIAL"
+                      ? QColor("#F5B84B")
+                      : QColor("#FF6678");
 
         switch (index.column()) {
-        case 0: return QBrush(QColor("#90CAF9"));
-        case 1: return QBrush(QColor("#CFD8DC"));
+        case 0:
+        case 1: return QBrush(QColor("#90CAF9"));
         case 2:
-            return QBrush(blocked ? QColor("#FF6678") : QColor("#C9F27A"));
-        case 3:
-            return QBrush(blocked ? QColor("#FF8A80") : QColor("#B9F6CA"));
+        case 4: return QBrush(QColor("#CFD8DC"));
+        case 3: return QBrush(statusColor);
+        case 5: return QBrush(statusColor);
         default: return {};
         }
     }
 
-    if (role == Qt::FontRole && index.column() == 2) {
+    if (role == Qt::FontRole &&
+        (index.column() == 2 || index.column() == 4)) {
         return QFont("Segoe UI", 9, QFont::Bold);
     }
 
@@ -74,27 +80,31 @@ QVariant TrafficLogModel::headerData(int section,
 
     switch (section) {
     case 0: return "Timestamp";
-    case 1: return "Hex Payload";
-    case 2: return "Verdict";
-    case 3: return "Inspection Note";
+    case 1: return "Source";
+    case 2: return "Function";
+    case 3: return "Frame Status";
+    case 4: return "Payload (hex)";
+    case 5: return "Inspection Note";
     default: return {};
     }
 }
 
 void TrafficLogModel::appendLog(const QString &time,
-                                const QString &hex,
+                                const QString &source,
+                                const QString &function,
                                 const QString &verdict,
+                                const QString &hex,
                                 const QString &reason)
 {
     const int row = logs.size();
     beginInsertRows(QModelIndex(), row, row);
-
-    LogEntry entry;
-    entry.timestamp = time;
-    entry.hexPayload = hex;
-    entry.verdict = verdict;
-    entry.reason = reason;
-    logs.append(entry);
-
+    logs.append({time, source, function, verdict, hex, reason});
     endInsertRows();
+
+    constexpr int maxRows = 300;
+    if (logs.size() > maxRows) {
+        beginRemoveRows(QModelIndex(), 0, 0);
+        logs.removeFirst();
+        endRemoveRows();
+    }
 }
