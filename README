@@ -1,84 +1,49 @@
-# VoltGuard: Physical-Layer OT Intrusion Prevention System
+# VoltGuard Passive Dashboard
 
-VoltGuard is an inline, cyber-physical IPS designed for critical SCADA networks. It evaluates the physical consequences of Modbus/TCP commands in real time using an ordinary differential equation (ODE) digital twin, blocking equipment-damaging attacks (e.g., Stuxnet-style overspeed, water hammer) before commands reach field PLCs.
+The Qt dashboard displays packet observations from a separate Scapy capture
+helper. It is a read-only monitor: it does not inject, modify, or block traffic.
+TCP packet payloads are inspected individually; this helper does not reassemble
+TCP streams, so split or coalesced Modbus/TCP ADUs may be marked partial or for
+review.
 
----
+## Requirements
 
-## Architecture Pipeline
+- Qt 5 or Qt 6 Widgets and Network development packages
+- CMake 3.16 or newer and a C++17 compiler
+- Python 3.9 or newer
+- Scapy (`python -m pip install -r Dashboardv2/requirements.txt`)
+- On Windows, Npcap is required for packet capture. Capturing may require
+  running the monitor terminal with elevated privileges.
 
-```text
-[ SCADA / Attacker ]
-        │ (Modbus/TCP)
-        ▼
-[ Parser & Traffic Engine ] (Parser_ips/) ──TCP:5555──▶ [ ODE Physics Core ] (Physics_core/)
-        │                                                    │ (ALLOW / DROP)
-        │                                                    ▼
-        └──────────────────── UDP:5556 ─────────────────▶ [ Qt6 Telemetry GUI ] (Dashboard_ui/)
+## Build and run the dashboard (PowerShell)
+
+From the repository root:
+
+```powershell
+cmake -S Dashboardv2 -B Dashboardv2/build
+cmake --build Dashboardv2/build
+.\Dashboardv2\build\VoltGuardDashboard.exe
 ```
 
----
+## Start the passive monitor
 
-## Directory Structure
+In a second terminal, install Scapy and list available capture interfaces:
 
-```text
-Voltgaurd/
-├── run_voltguard.sh             # Single-command launcher (startup & cleanup)
-├── Physics_core/
-│   └── Simulation_api.py        # ODE hydraulic transient solver (Port 5555)
-├── Parser_ips/
-│   ├── modbus_parser.cpp/.hpp   # Modbus/TCP protocol frame decoder
-│   ├── ips_engine.cpp           # Inline filter & UDP telemetry broadcaster
-│   └── traffic_generator.py     # SCADA & attack traffic stream generator
-└── Dashboard_ui/
-    ├── CMakeLists.txt           # Qt6 build definition
-    ├── mainwindow.cpp/.h        # Real-time telemetry receiver (UDP 5556)
-    ├── physics_plot_widget.cpp  # Smooth 100ms hydraulic waveform widget
-    └── traffic_log_model.cpp    # Color-coded decision table (ALLOW / DROP)
+```powershell
+python -m pip install -r Dashboardv2\requirements.txt
+python Dashboardv2\live_modbus_monitor.py --list-interfaces
 ```
 
----
+Start capture on the selected interface:
 
-## Key Safety Constraints
-
-* **Maximum Operating Pressure ($P_{\max}$):** $10.0\text{ Bar}$ (Commands exceeding this are dropped inline).
-* **Impeller Speed Ceiling ($\omega_{\max}$):** $3600\text{ RPM}$ (Blocks destructive overspeed attacks).
-* **Water-Hammer Protection:** Drops rapid valve closures ($\le 3\%$) occurring at pump speeds $> 2200\text{ RPM}$.
-* **Evaluation Latency:** Sub-$10\text{ ms}$ inline decision-making.
-
----
-
-## Quick Start
-
-### 1. Build & Dependencies
-
-```bash
-# Install dependencies (Debian/Ubuntu)
-sudo apt install build-essential cmake qt6-base-dev libqt6charts6-dev python3-venv
-
-# Set up Python virtual environment
-python3 -m venv venv && source venv/bin/activate
-pip install numpy scipy
-
-# Build Qt6 Dashboard
-cd Dashboard_ui && mkdir -p build && cd build
-cmake .. && cmake --build . && cd ../..
+```powershell
+python Dashboardv2\live_modbus_monitor.py --interface "YOUR INTERFACE NAME"
 ```
 
-### 2. Run Entire Stack
+The monitor sends JSON messages to the dashboard over loopback UDP port 5556.
+Start the dashboard first. If no interface is specified, Scapy selects its
+default interface.
 
-Launch all services with a single script:
-
-```bash
-./run_voltguard.sh
-```
-
-*(Press `Ctrl + C` in the terminal to cleanly terminate all background services.)*
-
----
-
-## Port Allocation
-
-| Port | Protocol | Usage |
-| :--- | :--- | :--- |
-| **5555** | TCP | Synchronous digital twin physics evaluation |
-| **5556** | UDP | Telemetry waveform and packet audit streaming to GUI |
+The dashboard only reports observed TCP port 502 packets and basic MBAP framing
+status. “Complete” means the captured packet payload length matches the MBAP
+length; it is not a security verdict or proof that a request is safe.
